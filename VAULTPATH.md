@@ -14,29 +14,38 @@ NEVER ask multiple questions together. Always:
 2. Wait for the answer
 3. Then ask the NEXT question
 
+This is mandatory. Every interaction must be a single question with interactive options.
+
 ---
 
 ## Registration flow (step by step)
 
-### Step 1 — Ask name (plain text)
+### Step 1 — Ask name (plain text, no options)
 ```
 What is your name?
 ```
-Wait for answer. Then step 2.
+Wait for answer. Then go to step 2.
 
-### Step 2 — Ask role (interactive)
+### Step 2 — Ask role (interactive options)
 ```
 Select your role:
   A) admin — full access
   B) member — access to your folder
   C) viewer — read only
 ```
-Wait for answer. Then step 3.
+Wait for answer. Then go to step 3.
 
-### Step 3 — Ask server username (interactive)
-Show the team list configured below. Wait for answer. Register. Then show menu.
+### Step 3 — Ask server username (interactive options)
+```
+Select your server username:
+  A) raul
+  B) lumiora
+  C) nexora
+  D) waydra
+```
+Wait for answer. Register the person. Then show menu.
 
-### Step 4 — Show menu by role (interactive)
+### Step 4 — Show menu based on role (interactive options)
 
 **member / viewer:**
 ```
@@ -61,38 +70,27 @@ What do you need?
 
 ## IMPORTANT — Two separate concepts
 
-**Person name** → who is operating (e.g. Marco, Ana)
+**Person name** → who is operating (e.g. Marco, Ana, Carlos)
 - Stored in `~/.vaultpath/vault/team.json`
 - Defines role and permissions
 
-**Server username** → Linux account on the server (e.g. user1, user2)
-- Defines which Samba folder and SSH user
+**Server username** → Linux account on the server (e.g. raul, lumiora, nexora, waydra)
+- Defines which Samba folder and SSH user to use
 
 These are NEVER mixed. Always ask separately, one at a time.
 
 ---
 
-## Returning user
+## Returning user flow
 
 If name found in `~/.vaultpath/vault/team.json`:
-- Greet with last session context
-- Go directly to menu
-
----
-
-## Team folders
-> Edit this table with your actual team members and shares
-
-| User | Share | Drive | Description |
-|---|---|---|---|
-| user1 | Share1 | A: | Add your team here |
-| user2 | Share2 | B: | |
-| user3 | Share3 | C: | |
+1. Greet with last session context
+2. Go directly to menu (skip registration steps)
 
 ---
 
 ## Server configuration
-> Values from `.env` — never hardcode here
+> Values from `.env` — never hardcode here.
 
 | Variable | Description |
 |---|---|
@@ -107,7 +105,8 @@ If name found in `~/.vaultpath/vault/team.json`:
 ---
 
 ## Security — non-negotiable
-- Never store passwords in vault or any file
+- Never store passwords in plain text files
+- Samba credentials are stored in **Windows Credential Manager** (encrypted by the OS)
 - Read-only before any changes
 - Always propose before executing
 - Maximum 3 retries (circuit breaker)
@@ -115,7 +114,19 @@ If name found in `~/.vaultpath/vault/team.json`:
 
 ---
 
+## Team folders
+
+| User | Share | Drive |
+|---|---|---|
+| raul | Datos | R: |
+| lumiora | Lumiora | L: |
+| nexora | nexora | N: |
+| waydra | waydra | W: |
+
+---
+
 ## SSH Flow (admin only)
+
 ```
 1. Detect network     → LAN or Tailscale
 2. Verify VPN         → if remote: check-vpn.sh
@@ -127,12 +138,15 @@ If name found in `~/.vaultpath/vault/team.json`:
 ---
 
 ## Mount drive flow
+
 ```
 1. Show team folders table (interactive)
 2. User picks their folder
 3. Detect network → LAN or Tailscale
 4. If LAN conflict → use Tailscale IP
-5. Open external terminal → user enters Samba password
+5. Check Windows Credential Manager for saved credentials
+   → If found: mount directly (no password prompt)
+   → If not found: open external terminal → user enters password → save to Credential Manager
 6. Mount persistent drive
 ```
 
@@ -146,31 +160,56 @@ If name found in `~/.vaultpath/vault/team.json`:
 ---
 
 ## Vault (local memory)
+
 ```
 ~/.vaultpath/
-├── vault/team.json
+├── vault/
+│   └── team.json
 └── sessions/server/
     ├── session.json
     ├── history.log
     └── last.md
 ```
 
+**team.json format:**
+```json
+{
+  "Marco": {
+    "role": "admin",
+    "server_user": "raul",
+    "registered": "2026-04-23"
+  },
+  "Ana": {
+    "role": "member",
+    "server_user": "lumiora",
+    "registered": "2026-04-23"
+  }
+}
+```
+
 ---
 
 ## Scripts
+
 | Script | Usage |
 |---|---|
 | `setup.sh` | First-time setup |
 | `connect.sh` | SSH connection (admin only) |
+| `ssh-connect.sh` | SSH with retry + circuit breaker |
+| `vpn-connect.sh` | Connect Tailscale |
+| `check-vpn.sh` | Verify VPN |
+| `check-network.sh` | Detect LAN or remote |
+| `test-port.sh` | Port test |
+| `monitor.sh` | Server status |
+| `add-member.sh` | Add team member (admin only) |
 | `mount-unix.sh` | Mount drive Linux/Mac |
 | `mount-windows.ps1` | Mount drive Windows |
-| `monitor.sh` | Server status |
-| `check-vpn.sh` | Verify Tailscale |
-| `add-member.sh` | Add team member (admin only) |
+| `detect-os.sh` | Detect OS |
 
 ---
 
 ## Response templates
+
 | Situation | Response |
 |---|---|
 | Activation | "Vaultpath ready. What is your name?" |
@@ -180,4 +219,6 @@ If name found in `~/.vaultpath/vault/team.json`:
 | Connected | "Connected. Shell active." |
 | VPN down | "Tailscale not active. Please enable it." |
 | Drive mounted | "Drive mounted. Check your file explorer." |
+| Credentials saved | "Credentials saved. Next time no password needed." |
+| Credentials failed | "Saved credentials failed. Please enter password again." |
 | Circuit breaker | "3 failures. Please check manually." |

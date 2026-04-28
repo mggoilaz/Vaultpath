@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# mount-unix.sh — Mount Samba network drive on Linux and macOS
-# Edit USERS, SHARES arrays below with your actual team members
+# mount-unix.sh — Montar unidad Samba en Linux y macOS
 source "$(dirname "$0")/detect-os.sh"
 source "$(dirname "$0")/../.env" 2>/dev/null || true
 
 TS_IP="${SERVER_TS_IP:-}"
 LAN_IP="${SERVER_LAN_IP:-}"
 
-# ─── CONFIGURE YOUR TEAM HERE ───────────────────────────────────────
-USERS=("user1"   "user2"   "user3")
-SHARES=("Share1" "Share2"  "Share3")
-# ────────────────────────────────────────────────────────────────────
+# Tabla del equipo
+USERS=("raul"    "lumiora" "nexora" "waydra")
+SHARES=("Datos"  "Lumiora" "nexora" "waydra")
 
 echo ""
 echo "╔══════════════════════════════════╗"
@@ -39,6 +37,7 @@ MOUNT_DIR="/mnt/$USER"
 echo ""
 echo "User: $USER | Share: $SHARE"
 
+# Detectar red
 IN_LAN=false
 ip route 2>/dev/null | grep -q "192.168" && IN_LAN=true
 netstat -rn 2>/dev/null | grep -q "192.168" && IN_LAN=true
@@ -65,6 +64,11 @@ case "$OS_TYPE" in
     mac)
         sudo mkdir -p "$MOUNT_DIR"
         mount_smbfs "//$USER:$PASS@$TARGET_IP/$SHARE" "$MOUNT_DIR" 2>/dev/null
-        [ $? -eq 0 ] && echo "✓ Mounted at $MOUNT_DIR" || open "smb://$USER@$TARGET_IP/$SHARE"
+        if [ $? -eq 0 ]; then
+            echo "✓ Mounted at $MOUNT_DIR"
+        else
+            echo "Opening Finder..."
+            open "smb://$USER@$TARGET_IP/$SHARE"
+        fi
         ;;
 esac
