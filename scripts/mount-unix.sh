@@ -50,11 +50,10 @@ else
     echo "Network: Tailscale → $TARGET_IP"
 fi
 
-read -s -p "Samba password for $USER: " PASS
-echo ""
-
 case "$OS_TYPE" in
     linux)
+        read -s -p "Samba password for $USER: " PASS
+        echo ""
         command -v mount.cifs &>/dev/null || sudo apt-get install -y cifs-utils 2>/dev/null
         sudo mkdir -p "$MOUNT_DIR"
         sudo mount -t cifs "//$TARGET_IP/$SHARE" "$MOUNT_DIR" \
@@ -62,13 +61,23 @@ case "$OS_TYPE" in
         [ $? -eq 0 ] && echo "✓ Mounted at $MOUNT_DIR" || echo "ERROR — check password and network"
         ;;
     mac)
-        sudo mkdir -p "$MOUNT_DIR"
-        mount_smbfs "//$USER:$PASS@$TARGET_IP/$SHARE" "$MOUNT_DIR" 2>/dev/null
-        if [ $? -eq 0 ]; then
-            echo "✓ Mounted at $MOUNT_DIR"
-        else
-            echo "Opening Finder..."
-            open "smb://$USER@$TARGET_IP/$SHARE"
-        fi
+        echo ""
+        echo "Opening Terminal to mount drive..."
+        echo "(Enter your password in the new Terminal window)"
+        echo ""
+        SCRIPT_CMD="echo ''; echo '=== VAULTPATH — Mount $SHARE ==='; echo ''; "
+        SCRIPT_CMD+="read -s -p 'Samba password for $USER: ' PASS; echo ''; "
+        SCRIPT_CMD+="sudo mkdir -p $MOUNT_DIR; "
+        SCRIPT_CMD+="mount_smbfs \"//$USER:\$PASS@$TARGET_IP/$SHARE\" $MOUNT_DIR 2>/dev/null; "
+        SCRIPT_CMD+="if [ \$? -eq 0 ]; then "
+        SCRIPT_CMD+="  echo '✓ Mounted at $MOUNT_DIR'; "
+        SCRIPT_CMD+="else "
+        SCRIPT_CMD+="  echo 'Direct mount failed, opening Finder...'; "
+        SCRIPT_CMD+="  open \"smb://$USER@$TARGET_IP/$SHARE\"; "
+        SCRIPT_CMD+="fi; "
+        SCRIPT_CMD+="echo ''; read -p 'Press Enter to close'"
+        osascript -e "tell application \"Terminal\" to do script \"$SCRIPT_CMD\""
+        osascript -e "tell application \"Terminal\" to activate"
+        echo "Check Finder for mounted drive."
         ;;
 esac
